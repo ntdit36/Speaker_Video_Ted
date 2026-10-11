@@ -308,7 +308,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   return (
     <div ref={containerRef} className="w-full bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-800">
       {/* Top Video Header: Clip count & Channel info */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-950/80 border-b border-slate-800/80 text-xs text-slate-300">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-950 border-b border-slate-800 text-xs text-slate-300">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-amber-400 tabular-nums">
             Clip {clipIndex + 1} of {totalClips}
@@ -341,8 +341,8 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         </div>
       </div>
 
-      {/* Video Container Aspect Ratio 16:9 */}
-      <div className="relative w-full aspect-video bg-black flex items-center justify-center">
+      {/* Video Container Aspect Ratio 16:9 constrained to fit comfortably in viewport */}
+      <div className="relative w-full aspect-video max-h-[44vh] sm:max-h-[380px] bg-black flex items-center justify-center">
         <div id={playerIdRef.current} className="w-full h-full" />
         
         {/* Loading overlay if not ready yet */}
@@ -419,48 +419,48 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
       </div>
 
       {/* Control Deck Bar */}
-      <div className="p-3 bg-slate-950 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/80">
+      <div className="p-2 sm:p-2.5 bg-slate-950 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80">
         {/* Navigation / Clip Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-1.5">
           {/* Previous Clip */}
           <button
             onClick={onPrevClip}
             disabled={clipIndex === 0}
-            className={`p-2 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-colors ${
+            className={`py-1.5 px-2.5 rounded-lg font-medium text-xs flex items-center gap-1 transition-colors ${
               clipIndex === 0
                 ? 'text-slate-600 bg-slate-900 cursor-not-allowed'
                 : 'text-slate-200 bg-slate-800 hover:bg-slate-700 active:scale-95'
             }`}
             title="Previous clip (Left Arrow)"
           >
-            <SkipBack className="w-4 h-4" />
+            <SkipBack className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Prev</span>
           </button>
 
           {/* Replay Sentence */}
           <button
             onClick={replaySentence}
-            className="p-2 px-3 rounded-lg font-medium text-xs flex items-center gap-1.5 text-slate-200 bg-slate-800 hover:bg-slate-700 active:scale-95 transition-colors"
+            className="py-1.5 px-2.5 rounded-lg font-medium text-xs flex items-center gap-1 text-slate-200 bg-slate-800 hover:bg-slate-700 active:scale-95 transition-colors"
             title="Replay sentence (Key: R)"
           >
-            <RotateCcw className="w-4 h-4 text-amber-400" />
+            <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
             <span>Replay</span>
           </button>
 
           {/* Play / Pause */}
           <button
             onClick={togglePlay}
-            className="p-2 px-4 rounded-lg font-semibold text-xs flex items-center gap-1.5 text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-95 transition-colors shadow-sm"
+            className="py-1.5 px-3.5 rounded-lg font-semibold text-xs flex items-center gap-1.5 text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-95 transition-colors shadow-2xs"
             title="Play / Pause (Spacebar)"
           >
             {isPlaying ? (
               <>
-                <Pause className="w-4 h-4 fill-slate-950" />
+                <Pause className="w-3.5 h-3.5 fill-slate-950" />
                 <span>Pause</span>
               </>
             ) : (
               <>
-                <Play className="w-4 h-4 fill-slate-950" />
+                <Play className="w-3.5 h-3.5 fill-slate-950" />
                 <span>Play</span>
               </>
             )}
@@ -470,7 +470,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
           <button
             onClick={onNextClip}
             disabled={clipIndex >= totalClips - 1}
-            className={`p-2 rounded-lg font-medium text-xs flex items-center gap-1.5 transition-colors ${
+            className={`py-1.5 px-2.5 rounded-lg font-medium text-xs flex items-center gap-1 transition-colors ${
               clipIndex >= totalClips - 1
                 ? 'text-slate-600 bg-slate-900 cursor-not-allowed'
                 : 'text-slate-200 bg-slate-800 hover:bg-slate-700 active:scale-95'
@@ -478,7 +478,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
             title="Next clip (Right Arrow)"
           >
             <span className="hidden sm:inline">Next</span>
-            <SkipForward className="w-4 h-4" />
+            <SkipForward className="w-3.5 h-3.5" />
           </button>
         </div>
 

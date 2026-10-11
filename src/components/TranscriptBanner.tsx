@@ -249,75 +249,69 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
   }, [lines, filterQuery]);
 
   return (
-    <div className="w-full bg-white rounded-xl border border-slate-200/90 shadow-sm p-4 sm:p-5 relative transition-all space-y-3.5">
+    <div className="w-full bg-white rounded-xl border border-slate-200/90 shadow-sm p-3 sm:p-3.5 relative transition-all space-y-2.5">
       {/* Top Header bar with Modes & Global Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-slate-100 text-xs">
-        {/* Left: Mode Tabs & Real-time Indicator */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center p-0.5 bg-slate-100 rounded-lg">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100 text-xs">
+        {/* Left: Compact Mode Tabs */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200/60">
             <button
               onClick={() => setActiveTab('live')}
-              className={`px-3 py-1.5 rounded-md font-bold text-xs transition-colors flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md font-semibold text-xs transition-all flex items-center gap-1 cursor-pointer ${
                 activeTab === 'live'
-                  ? 'bg-white text-slate-950 shadow-2xs'
+                  ? 'bg-slate-900 text-white shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
+              title="Chế độ Karaoke tập trung theo video"
             >
-              <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
-              <span>Karaoke Tập Trung</span>
+              <MessageSquare className="w-3 h-3 text-amber-400" />
+              <span>Karaoke</span>
             </button>
             <button
               onClick={() => setActiveTab('dual')}
-              className={`px-3 py-1.5 rounded-md font-bold text-xs transition-colors flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md font-semibold text-xs transition-all flex items-center gap-1 cursor-pointer ${
                 activeTab === 'dual'
-                  ? 'bg-white text-slate-950 shadow-2xs'
+                  ? 'bg-slate-900 text-white shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
+              title="Xem Karaoke kết hợp Timeline"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Song Song (Dual)</span>
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>Song song</span>
             </button>
             <button
               onClick={() => setActiveTab('full')}
-              className={`px-3 py-1.5 rounded-md font-bold text-xs transition-colors flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-md font-semibold text-xs transition-all flex items-center gap-1 cursor-pointer ${
                 activeTab === 'full'
-                  ? 'bg-white text-slate-950 shadow-2xs'
+                  ? 'bg-slate-900 text-white shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
+              title="Toàn bộ danh sách phụ đề video"
             >
-              <ScrollText className="w-3.5 h-3.5 text-amber-500" />
-              <span>Toàn bộ Video ({lines.length} câu)</span>
+              <ScrollText className="w-3 h-3 text-amber-400" />
+              <span>Toàn bài ({lines.length})</span>
             </button>
           </div>
-
-          {/* Live Sync badge */}
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-mono text-[10px] font-bold border border-red-200">
-            <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
-            <span>REAL-TIME VIDEO</span>
-            <span className="text-slate-300">|</span>
-            <span className="text-slate-600 font-medium">
-              {formatTime(currentSec)} / {formatTime(clip.durationSeconds || lines[lines.length - 1]?.endSecond || 180)}
-            </span>
-          </span>
 
           {/* Subtitle Speed & Sync Tuner Button */}
           <button
             type="button"
             onClick={() => setShowSyncPanel((prev) => !prev)}
-            className={`px-2 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-2 py-1 rounded-md text-xs font-semibold border flex items-center gap-1 transition-all cursor-pointer ${
               showSyncPanel
-                ? 'bg-amber-100 text-amber-950 border-amber-300 ring-2 ring-amber-300/60 shadow-xs'
-                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs'
+                ? 'bg-amber-100 text-amber-950 border-amber-300 ring-2 ring-amber-300/60 shadow-2xs font-bold'
+                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
             }`}
-            title="Tùy chỉnh tốc độ subtitle nhanh/chậm & độ trễ để khớp hoàn toàn với video nói"
+            title="Tùy chỉnh tốc độ phụ đề & độ trễ khớp giọng nói"
           >
-            <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-            <span>Tốc độ: <strong className="text-amber-800 font-extrabold">{subtitleSpeed}x</strong></span>
-            <span className="text-slate-300">|</span>
-            <span className="text-slate-500 font-mono text-[10px]">
-              {leadOffset >= 0 ? `+${leadOffset}s` : `${leadOffset}s`}
-            </span>
-            <Sliders className="w-3 h-3 text-slate-400" />
+            <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+            <span>{subtitleSpeed}x</span>
+            {leadOffset !== 0 && (
+              <span className="text-slate-400 font-mono text-[10px]">
+                ({leadOffset > 0 ? `+${leadOffset}s` : `${leadOffset}s`})
+              </span>
+            )}
+            <Sliders className="w-2.5 h-2.5 text-slate-400" />
           </button>
         </div>
 
@@ -515,66 +509,71 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
         </div>
       )}
 
-      {/* VIEW 1: Phụ đề Real-time Live Karaoke (Theo từng giây của video) */}
+      {/* VIEW 1: Phụ đề Real-time Live Karaoke (Theo chuẩn YouGlish gọn gàng, vừa khung hình) */}
       {(activeTab === 'live' || activeTab === 'dual') && (
-        <div className="space-y-3">
-          {/* Previous sentence context (nếu có) */}
-          {prevLine && (
-            <div 
-              onClick={() => onSeekTime && onSeekTime(prevLine.startSecond)}
-              className="text-xs text-slate-600 hover:text-slate-700 bg-slate-50/60 hover:bg-slate-100/80 p-2 rounded-lg border border-slate-100 flex items-center justify-between gap-2 cursor-pointer transition-colors"
-              title="Nhấn để nghe lại câu trước đó"
-            >
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="text-[10px] font-mono text-slate-600 shrink-0">[{formatTime(prevLine.startSecond)}]</span>
-                <span className="italic truncate">"{prevLine.text}"</span>
-              </div>
-              <span className="text-[10px] text-amber-700 font-semibold shrink-0 flex items-center gap-0.5">
-                <ChevronLeft className="w-3 h-3" />
-                <span>Câu trước</span>
-              </span>
-            </div>
-          )}
-
-          {/* Main Active Sentence with Real-time Word-by-Word Karaoke */}
-          <div className="p-3 sm:p-4 rounded-xl bg-amber-50/30 border border-amber-200/80 shadow-2xs">
-            <div className="flex items-center justify-between text-[11px] text-slate-500 mb-2">
-              <span className="font-semibold text-slate-700 flex items-center gap-1.5 flex-wrap">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <div className="space-y-2">
+          {/* Main Active Sentence Card with Real-time Word-by-Word Karaoke */}
+          <div className="p-3.5 sm:p-4 rounded-xl bg-amber-50/40 border border-amber-200/90 shadow-2xs space-y-2.5">
+            {/* Header: Sentence info + Quick Steppers */}
+            <div className="flex items-center justify-between text-xs text-slate-500 border-b border-amber-200/60 pb-2">
+              <div className="flex items-center gap-1.5 font-semibold text-slate-700 flex-wrap">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>Câu {activeLineIndex + 1}/{lines.length}</span>
                 <span className="text-slate-300">·</span>
                 <span className="font-mono text-slate-500">[{formatTime(activeLine.startSecond)} - {formatTime(activeLine.endSecond)}]</span>
                 {activeLine.isTargetOccurrence && (
                   <span className="px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 font-bold text-[10px] border border-amber-300">
-                    🎯 Chứa từ tìm kiếm
+                    🎯 Từ khóa
                   </span>
                 )}
-              </span>
+              </div>
 
-              <div className="flex items-center gap-2">
+              {/* Steppers & Replay directly inside header */}
+              <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => setShowSyncPanel((prev) => !prev)}
-                  className="text-amber-800 hover:text-amber-950 font-semibold text-[11px] flex items-center gap-1 transition-colors px-2 py-0.5 rounded bg-amber-100/70 hover:bg-amber-100 border border-amber-200/70 cursor-pointer"
-                  title="Nhấn để tinh chỉnh tốc độ hoặc độ lệch"
+                  disabled={!prevLine}
+                  onClick={() => prevLine && onSeekTime && onSeekTime(prevLine.startSecond)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-0.5 transition-colors ${
+                    prevLine
+                      ? 'bg-white hover:bg-amber-100 text-slate-700 border border-amber-200/80 cursor-pointer'
+                      : 'opacity-40 text-slate-400 cursor-not-allowed'
+                  }`}
+                  title="Về câu trước"
                 >
-                  <Zap className="w-3 h-3 text-amber-600 fill-amber-500" />
-                  <span>Tốc độ: <strong>{subtitleSpeed}x</strong></span>
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Trước</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => onSeekTime && onSeekTime(activeLine.startSecond)}
-                  className="text-amber-800 hover:text-amber-950 font-semibold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+                  className="px-2 py-0.5 rounded text-[11px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200/80 flex items-center gap-1 transition-colors cursor-pointer"
                   title="Phát lại câu này từ đầu"
                 >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Lặp lại câu này</span>
+                  <RotateCcw className="w-3 h-3 text-amber-600" />
+                  <span className="hidden sm:inline">Lặp lại</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!nextLine}
+                  onClick={() => nextLine && onSeekTime && onSeekTime(nextLine.startSecond)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-0.5 transition-colors ${
+                    nextLine
+                      ? 'bg-white hover:bg-amber-100 text-slate-700 border border-amber-200/80 cursor-pointer'
+                      : 'opacity-40 text-slate-400 cursor-not-allowed'
+                  }`}
+                  title="Sang câu tiếp theo"
+                >
+                  <span className="hidden sm:inline">Sau</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* Karaoke Words stream */}
-            <div className="text-lg sm:text-xl font-medium leading-relaxed tracking-normal select-text">
+            {/* Karaoke Words stream: High visibility, YouGlish typography */}
+            <div className="text-xl sm:text-2xl font-medium leading-relaxed tracking-normal select-text min-h-[52px] flex flex-wrap items-center">
               {words.map((word, idx) => {
                 const cleaned = cleanWordForLookup(word);
                 const cleanTarget = (targetWord || '').trim().toLowerCase().replace(/[?!.,;:'"]/g, '');
@@ -591,17 +590,17 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
                 const isSpoken = isWithinActiveLine && idx < activeWordIndex;
 
                 return (
-                  <span key={idx} className="inline-block mr-1.5 my-1">
+                  <span key={idx} className="inline-block mr-1.5 my-0.5">
                     <button
                       type="button"
                       onClick={() => handleWordClick(word, idx)}
-                      className={`transition-all rounded px-2 py-0.5 inline-block text-left cursor-pointer duration-100 ${
+                      className={`transition-all rounded px-1.5 py-0.5 inline-block text-left cursor-pointer duration-100 ${
                         isActiveRealtime && isTarget
-                          ? 'bg-amber-400 text-amber-950 font-black ring-4 ring-amber-400/80 scale-110 shadow-md shadow-amber-300/40 z-10'
+                          ? 'bg-amber-400 text-amber-950 font-black ring-3 ring-amber-400/80 scale-105 shadow-md shadow-amber-300/40 z-10'
                           : isActiveRealtime
-                          ? 'bg-amber-300 text-amber-950 font-extrabold ring-3 ring-amber-400/70 scale-105 shadow-sm z-10'
+                          ? 'bg-amber-300 text-amber-950 font-extrabold ring-2 ring-amber-400/70 scale-105 shadow-2xs z-10'
                           : isTarget
-                          ? 'bg-amber-200/90 text-amber-950 font-bold ring-2 ring-amber-400/50 hover:bg-amber-300'
+                          ? 'bg-amber-200/90 text-amber-950 font-bold ring-1 ring-amber-400/50 hover:bg-amber-300'
                           : isSpoken
                           ? 'text-slate-900 font-semibold hover:bg-slate-100'
                           : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
@@ -616,18 +615,16 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
             </div>
 
             {/* Real-time Sentence Scrubber Bar */}
-            <div className="space-y-1 mt-3">
+            <div className="space-y-1 pt-1">
               <div 
                 onClick={handleScrubberClick}
-                className="w-full h-2 bg-slate-200/70 hover:bg-slate-300/80 rounded-full overflow-hidden cursor-pointer relative transition-all group"
-                title="Nhấn vào thanh này để tua video đến từng đoạn trong câu"
+                className="w-full h-1.5 bg-slate-200/70 hover:h-2 rounded-full overflow-hidden cursor-pointer relative transition-all group"
+                title="Nhấn vào thanh này để tua video trong câu"
               >
                 <div 
                   className="h-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-100 ease-linear rounded-full relative" 
                   style={{ width: `${isWithinActiveLine ? lineProgress * 100 : (currentSec > activeLine.endSecond ? 100 : 0)}%` }}
-                >
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-amber-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-xs" />
-                </div>
+                />
               </div>
               <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono px-0.5">
                 <span>{formatTime(activeLine.startSecond)}</span>
@@ -637,57 +634,6 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
                 <span>{formatTime(activeLine.endSecond)}</span>
               </div>
             </div>
-          </div>
-
-          {/* Next sentence context preview (nếu có) */}
-          {nextLine && (
-            <div 
-              onClick={() => onSeekTime && onSeekTime(nextLine.startSecond)}
-              className="text-xs text-slate-600 hover:text-slate-700 bg-slate-50/60 hover:bg-slate-100/80 p-2 rounded-lg border border-slate-100 flex items-center justify-between gap-2 cursor-pointer transition-colors"
-              title="Nhấn để nhảy sang câu tiếp theo"
-            >
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="text-[10px] font-mono text-slate-600 shrink-0">[{formatTime(nextLine.startSecond)}]</span>
-                <span className="italic truncate">"{nextLine.text}"</span>
-              </div>
-              <span className="text-[10px] text-amber-700 font-semibold shrink-0 flex items-center gap-0.5">
-                <span>Câu tiếp theo</span>
-                <ChevronRight className="w-3 h-3" />
-              </span>
-            </div>
-          )}
-
-          {/* Controls Bar for fast jumping between lines */}
-          <div className="flex items-center justify-between pt-1 text-xs">
-            <button
-              disabled={!prevLine}
-              onClick={() => prevLine && onSeekTime && onSeekTime(prevLine.startSecond)}
-              className={`px-3 py-1.5 rounded-lg border flex items-center gap-1 font-semibold transition-colors ${
-                prevLine
-                  ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 cursor-pointer'
-                  : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
-              }`}
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Câu trước</span>
-            </button>
-
-            <span className="text-slate-400 text-[11px]">
-              Chữ chạy đồng bộ real-time theo toàn bộ thời lượng video
-            </span>
-
-            <button
-              disabled={!nextLine}
-              onClick={() => nextLine && onSeekTime && onSeekTime(nextLine.startSecond)}
-              className={`px-3 py-1.5 rounded-lg border flex items-center gap-1 font-semibold transition-colors ${
-                nextLine
-                  ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 cursor-pointer'
-                  : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
-              }`}
-            >
-              <span>Câu sau</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
           </div>
         </div>
       )}

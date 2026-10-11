@@ -326,7 +326,7 @@ export default function App() {
       </section>
 
       {/* Main Workspace Stage */}
-      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 flex-1">
+      <main className="max-w-7xl mx-auto w-full px-3 sm:px-6 py-3 sm:py-4 flex-1">
         {activeTab === 'explore' ? (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -345,65 +345,40 @@ export default function App() {
             />
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             {/* Left 7 Columns: Video Player & Subtitles Stage */}
-            <div className="lg:col-span-8 space-y-4">
-              {/* Top Video Stage Bar */}
-              <div className="flex items-center justify-between p-2 bg-slate-100 rounded-xl border border-slate-200/80">
-                <div className="flex items-center gap-2 pl-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 bg-white px-3 py-1.5 rounded-lg shadow-2xs border border-slate-200/60">
-                    <Play className="w-3.5 h-3.5 fill-current text-red-600" />
-                    <span>Video Pronounce Player</span>
-                  </div>
-                  <span className="text-slate-300">·</span>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-100 text-amber-900 border border-amber-200 shadow-2xs">
-                    Cover by Eddy
-                  </span>
-                </div>
-
-                <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 pr-2">
-                  <span className="font-semibold text-slate-700 capitalize">
-                    "{currentWordEntry.word}"
-                  </span>
-                  <span>·</span>
-                  <span className="uppercase text-[11px] font-mono">
-                    {activeClip.accent} accent
-                  </span>
-                </div>
-              </div>
-
-              {/* Clip count & Quick Jump info bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200/80 shadow-2xs">
+            <div className="lg:col-span-8 space-y-2.5">
+              {/* Streamlined YouGlish Video Header Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-slate-100 rounded-xl border border-slate-200 text-xs">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <Video className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Tìm thấy {filteredClips.length} video</span>
+                    <Play className="w-3.5 h-3.5 fill-red-600 text-red-600" />
+                    <span>Clip {currentClipIndex + 1}/{filteredClips.length}</span>
                   </span>
                   <span className="text-slate-300">·</span>
-                  <span>Từ khóa: <strong className="text-amber-900 capitalize">"{currentWordEntry.word}"</strong></span>
+                  <span className="font-semibold text-amber-950 bg-amber-100 border border-amber-300/80 px-2 py-0.5 rounded">
+                    "{currentWordEntry.word}"
+                  </span>
                   <span className="text-slate-300">·</span>
-                  <span className="font-mono text-slate-600 uppercase font-semibold text-[11px] bg-slate-100 px-1.5 py-0.5 rounded">
-                    {accent} accent
+                  <span className="font-mono text-slate-600 uppercase font-bold text-[11px] bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+                    {accent}
                   </span>
                   {activeClip && (
                     <>
                       <span className="text-slate-300">·</span>
-                      <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-[11px] font-semibold ${
-                        activeClip.isShort ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        <Clock className="w-3 h-3" />
-                        <span>{activeClip.durationFormatted}</span>
-                        {activeClip.isShort && <span className="text-[10px] text-emerald-800 font-bold">⚡ &lt; 10m</span>}
+                      <span className="text-slate-500 font-mono text-[11px]">
+                        {activeClip.durationFormatted}
                       </span>
                     </>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-slate-500">Chuyển nhanh:</span>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 hidden sm:inline text-xs">Chuyển clip:</span>
                   <select
                     value={currentClipIndex}
                     onChange={(e) => setCurrentClipIndex(Number(e.target.value))}
-                    className="bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded px-2 py-1 text-xs font-semibold text-slate-800 outline-none cursor-pointer"
+                    className="bg-white hover:bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 outline-none cursor-pointer shadow-2xs"
                   >
                     {filteredClips.map((c, i) => (
                       <option key={i} value={i}>
