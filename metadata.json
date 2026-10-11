@@ -1,0 +1,6 @@
+{
+  "name": "YouGlish Pronounce - YouTube Video Pronunciation Dictionary",
+  "description": "Learn authentic pronunciation from real YouTube videos with interactive subtitles, accent filters, phonetic IPA, and shadowing practice.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
