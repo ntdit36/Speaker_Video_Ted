@@ -1,9 +1,17 @@
 import { WordEntry, VideoClip, Language } from '../types';
 import { AUTHENTIC_TRANSCRIPTS } from './knownTranscripts';
+import { MULTI_CHANNEL_CATALOG, MULTI_CHANNEL_TRANSCRIPTS } from './multiChannelData';
 import { KNOWN_VIDEO_CATALOG, cuesToTranscriptLines, VideoCatalogItem } from '../services/transcriptService';
+import { getSentenceIPATranscription } from '../services/pronunciationService';
+import { getVietnameseSubtitle } from '../services/translationService';
 
-// All video sources are 100% strictly from official TED Talks (https://www.youtube.com/@TED)
-export const VIDEO_SOURCES: VideoCatalogItem[] = Object.values(KNOWN_VIDEO_CATALOG);
+// All video sources from official TED, BBC Learning English, Easy English, Rachel's English, TV Series, VOA
+export const VIDEO_SOURCES: VideoCatalogItem[] = Array.from(
+  new Map(
+    [...Object.values(KNOWN_VIDEO_CATALOG), ...(MULTI_CHANNEL_CATALOG as VideoCatalogItem[])]
+      .map((item) => [item.youtubeId, item])
+  ).values()
+);
 
 // Helper to format seconds into m:ss
 export function formatDuration(seconds: number): string {
@@ -12,9 +20,30 @@ export function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function normalizeForSearch(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[’']/g, "'")
+    .replace(/what's/g, 'what is')
+    .replace(/who's/g, 'who is')
+    .replace(/it's/g, 'it is')
+    .replace(/i'm/g, 'i am')
+    .replace(/you're/g, 'you are')
+    .replace(/we're/g, 'we are')
+    .replace(/they're/g, 'they are')
+    .replace(/don't/g, 'do not')
+    .replace(/doesn't/g, 'does not')
+    .replace(/didn't/g, 'did not')
+    .replace(/can't/g, 'cannot')
+    .replace(/won't/g, 'will not')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /**
- * Generate clips for ANY word or phrase by strictly querying authentic transcripts
- * from official TED Talks (https://www.youtube.com/@TED).
+ * Generate clips for ANY word or sentence by querying authentic transcripts across
+ * BBC Learning English, TED, Easy English, Rachel's English, TV Series, VOA, TEDx.
  * Every returned clip corresponds 100% to spoken words and exact frame timestamps.
  */
 export function generateClipsForWord(
@@ -23,92 +52,196 @@ export function generateClipsForWord(
 ): VideoClip[] {
   const rawInput = word.trim().toLowerCase();
   const cleanWord = rawInput.replace(/[?!.,;:'"]/g, '').trim() || rawInput;
-  const searchTokens = cleanWord.split(/\s+/).filter(Boolean);
-  const rawClips: VideoClip[] = [];
+  const normQuery = normalizeForSearch(cleanWord);
+  const searchTokens = normQuery.split(/\s+/).filter(Boolean);
+  const isPhrase = searchTokens.length > 1;
 
+  if (searchTokens.length === 0) return [];
+
+  interface ScoredCandidate {
+    clip: VideoClip;
+    score: number;
+  }
+  const candidates: ScoredCandidate[] = [];
   let clipIndex = 1;
 
-  // STEP 1: Scan ALL official TED AUTHENTIC_TRANSCRIPTS to extract 100% genuine speaker occurrences
+  // Plural & possessive variants
+  const pluralQuery = isPhrase
+    ? `${searchTokens.slice(0, -1).join(' ')} ${searchTokens[searchTokens.length - 1]}s`.trim()
+    : `${normQuery}s`;
+  const possessiveQuery = isPhrase
+    ? `${searchTokens.slice(0, -1).join(' ')} ${searchTokens[searchTokens.length - 1]}'s`.trim()
+    : `${normQuery}'s`;
+
   for (const source of VIDEO_SOURCES) {
-    const knownCues = AUTHENTIC_TRANSCRIPTS[source.youtubeId];
+    const knownCues = MULTI_CHANNEL_TRANSCRIPTS[source.youtubeId] || AUTHENTIC_TRANSCRIPTS[source.youtubeId];
     if (!knownCues || knownCues.length === 0) continue;
 
-    // Find all cues in this authentic TED video that contain the search term
-    const matchedCues = knownCues.filter((c) => {
-      const textLower = c.text.toLowerCase();
-      // Exact phrase match
-      if (textLower.includes(cleanWord)) return true;
-      // Multi-word phrase token match in order
-      if (searchTokens.length > 1) {
-        return searchTokens.every((tok) => textLower.includes(tok));
+    const seenStarts: number[] = [];
+    const maxWindow = isPhrase ? Math.min(3, knownCues.length) : 1;
+
+    for (let i = 0; i < knownCues.length; i++) {
+      for (let w = 1; w <= maxWindow && i + w <= knownCues.length; w++) {
+        const windowCues = knownCues.slice(i, i + w);
+        const windowText = windowCues.map((c) => c.text).join(' ');
+        const normWindow = normalizeForSearch(windowText);
+
+        let score = 0;
+        let matchOffset = 0; // Index in windowCues where target phrase actually starts
+
+        if (searchTokens.length === 1) {
+          // SINGLE WORD: Must match exact word boundary
+          const singleTok = searchTokens[0];
+          const escaped = singleTok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const exactWordRegex = new RegExp(`\\b${escaped}\\b`, 'i');
+          const inflectedRegex = new RegExp(`\\b${escaped}(s|es|ed|ing)?\\b`, 'i');
+
+          if (exactWordRegex.test(normWindow)) {
+            score = 2000;
+          } else if (inflectedRegex.test(normWindow)) {
+            score = 1500;
+          }
+        } else if (searchTokens.length === 2 || searchTokens.length === 3) {
+          // 2-3 WORD PHRASE (e.g. "best friend", "keep in touch"):
+          // STRICT RULE: MUST actually contain the phrase, plural, or possessive!
+          // Unrelated videos or single loose words are NEVER matched!
+          if (normWindow === normQuery) {
+            score = 3000;
+          } else if (normWindow.includes(normQuery)) {
+            score = 2500 - (w - 1) * 60;
+          } else if (normWindow.includes(pluralQuery)) {
+            score = 2400 - (w - 1) * 60;
+          } else if (normWindow.includes(possessiveQuery)) {
+            score = 2300 - (w - 1) * 60;
+          } else if (searchTokens.length === 3) {
+            // For 3-word phrase: e.g. "who is your"
+            const sub2_1 = `${searchTokens[0]} ${searchTokens[1]}`;
+            const sub2_2 = `${searchTokens[1]} ${searchTokens[2]}`;
+            if (normWindow.includes(sub2_1) && normWindow.includes(searchTokens[2])) {
+              score = 1800;
+            } else if (normWindow.includes(sub2_2) && normWindow.includes(searchTokens[0])) {
+              score = 1800;
+            }
+          }
+        } else {
+          // LONGER SENTENCE (4+ words, e.g. "what is your best friend like"):
+          if (normWindow.includes(normQuery)) {
+            score = 3000;
+          } else {
+            // Must contain key non-trivial 2-word phrase (e.g. "best friend")
+            let hasCorePhrase = false;
+            for (let k = 0; k <= searchTokens.length - 2; k++) {
+              const sub2 = `${searchTokens[k]} ${searchTokens[k + 1]}`;
+              const isOnlyStopWords = ['what is', 'is your', 'are you', 'do you', 'in the', 'to the', 'of the'].includes(sub2);
+              if (!isOnlyStopWords && (normWindow.includes(sub2) || normWindow.includes(sub2 + 's'))) {
+                hasCorePhrase = true;
+                break;
+              }
+            }
+
+            const matchedTokens = searchTokens.filter((tok) => normWindow.includes(tok));
+            const overlapRatio = matchedTokens.length / searchTokens.length;
+
+            if (hasCorePhrase && overlapRatio >= 0.5) {
+              score = 1600 + Math.round(overlapRatio * 400);
+            } else if (overlapRatio >= 0.8) {
+              score = 1500;
+            }
+          }
+        }
+
+        // Only accept true matches (score >= 1000)
+        if (score >= 1000) {
+          // Find the exact cue in windowCues that contains the matched phrase
+          for (let cIdx = 0; cIdx < windowCues.length; cIdx++) {
+            const cueNorm = normalizeForSearch(windowCues[cIdx].text);
+            if (
+              cueNorm.includes(cleanWord) ||
+              cueNorm.includes(normQuery) ||
+              cueNorm.includes(pluralQuery) ||
+              (searchTokens.length >= 2 && cueNorm.includes(searchTokens[1])) ||
+              searchTokens.every((t) => cueNorm.includes(t))
+            ) {
+              matchOffset = cIdx;
+              break;
+            }
+          }
+
+          const matchedCue = windowCues[matchOffset] || windowCues[0];
+          const startSecond = Math.max(0, matchedCue.start);
+          const endSecond = windowCues[windowCues.length - 1].end;
+
+          // Deduplicate overlapping clips within 6s
+          const isOverlapping = seenStarts.some((st) => Math.abs(st - startSecond) < 6);
+          if (isOverlapping) {
+            continue;
+          }
+          seenStarts.push(startSecond);
+
+          const clip: VideoClip = {
+            id: `clip-${cleanWord}-${source.youtubeId}-${clipIndex}`,
+            youtubeId: source.youtubeId,
+            title: source.title,
+            channel: source.channel || 'TED',
+            startSecond,
+            endSecond,
+            accent: source.accent,
+            sentence: windowText,
+            vietnameseSentence: getVietnameseSubtitle(windowText, source.youtubeId),
+            targetWord: cleanWord,
+            category: source.category,
+            views: source.views,
+            durationSeconds: source.durationSeconds,
+            durationFormatted: formatDuration(source.durationSeconds),
+            isShort: source.durationSeconds < 600,
+          };
+          clip.transcriptLines = cuesToTranscriptLines(knownCues, startSecond, source.youtubeId);
+          candidates.push({ clip, score });
+          clipIndex++;
+        }
       }
-      return false;
-    });
-
-    for (const cue of matchedCues) {
-      const authClip: VideoClip = {
-        id: `clip-${cleanWord}-${source.youtubeId}-${clipIndex}`,
-        youtubeId: source.youtubeId,
-        title: source.title,
-        channel: 'TED',
-        startSecond: Math.max(0, cue.start),
-        endSecond: cue.end,
-        accent: source.accent,
-        sentence: cue.text,
-        targetWord: cleanWord,
-        category: source.category,
-        views: source.views,
-        durationSeconds: source.durationSeconds,
-        durationFormatted: formatDuration(source.durationSeconds),
-        isShort: source.durationSeconds < 600,
-      };
-      authClip.transcriptLines = cuesToTranscriptLines(knownCues, cue.start, source.youtubeId);
-      rawClips.push(authClip);
-      clipIndex++;
     }
   }
 
-  // If matches found, sort short videos under 10m first and return up to count
-  if (rawClips.length > 0) {
-    const shortClips = rawClips.filter((c) => c.isShort);
-    const longerClips = rawClips.filter((c) => !c.isShort);
-    return [...shortClips, ...longerClips].slice(0, count);
+  candidates.sort((a, b) => b.score - a.score);
+  const matchedClips = candidates.map((c) => c.clip);
+
+  if (matchedClips.length > 0) {
+    return matchedClips.slice(0, count);
   }
 
-  // STEP 2: Fallback for rare words not yet occurring in pre-indexed TED talks
-  // Pick real authentic speech segments from iconic TED talks
-  // NEVER fabricate fake dummy text! Every subtitle matches the audio spoken.
+  // Never return fake unrelated talks for sentence/phrase searches
+  if (isPhrase) {
+    return [];
+  }
+
+  // Fallback for single words not yet indexed
+  const fallbackClips: VideoClip[] = [];
   for (const source of VIDEO_SOURCES) {
-    const knownCues = AUTHENTIC_TRANSCRIPTS[source.youtubeId];
+    const knownCues = MULTI_CHANNEL_TRANSCRIPTS[source.youtubeId] || AUTHENTIC_TRANSCRIPTS[source.youtubeId];
     if (!knownCues || knownCues.length === 0) continue;
-
-    for (let i = 0; i < Math.min(knownCues.length, 2); i++) {
-      const cue = knownCues[i];
-      const fallbackClip: VideoClip = {
-        id: `clip-ted-${cleanWord}-${source.youtubeId}-${clipIndex}`,
-        youtubeId: source.youtubeId,
-        title: source.title,
-        channel: 'TED',
-        startSecond: Math.max(0, cue.start),
-        endSecond: cue.end,
-        accent: source.accent,
-        sentence: cue.text,
-        targetWord: cleanWord,
-        category: source.category,
-        views: source.views,
-        durationSeconds: source.durationSeconds,
-        durationFormatted: formatDuration(source.durationSeconds),
-        isShort: source.durationSeconds < 600,
-      };
-      fallbackClip.transcriptLines = cuesToTranscriptLines(knownCues, cue.start, source.youtubeId);
-      rawClips.push(fallbackClip);
-      clipIndex++;
-      if (rawClips.length >= count) break;
-    }
-    if (rawClips.length >= count) break;
+    const cue = knownCues[0];
+    fallbackClips.push({
+      id: `clip-fallback-${cleanWord}-${source.youtubeId}`,
+      youtubeId: source.youtubeId,
+      title: source.title,
+      channel: source.channel || 'TED',
+      startSecond: Math.max(0, cue.start),
+      endSecond: cue.end,
+      accent: source.accent,
+      sentence: cue.text,
+      vietnameseSentence: getVietnameseSubtitle(cue.text, source.youtubeId),
+      targetWord: cleanWord,
+      category: source.category,
+      views: source.views,
+      durationSeconds: source.durationSeconds,
+      durationFormatted: formatDuration(source.durationSeconds),
+      isShort: source.durationSeconds < 600,
+      transcriptLines: cuesToTranscriptLines(knownCues, cue.start, source.youtubeId),
+    });
+    if (fallbackClips.length >= count) break;
   }
-
-  return rawClips.slice(0, count);
+  return fallbackClips;
 }
 
 // Preset Curated Dictionary - strictly official TED Talks (https://www.youtube.com/@TED)
@@ -414,39 +547,52 @@ export const CURATED_DICTIONARY: Record<string, WordEntry> = {
   }
 };
 
-// Algorithmic fallback generating authentic TED clips for ANY query entered
+// Algorithmic fallback generating authentic clips for ANY query or sentence entered
 export function generateFallbackWordEntry(query: string, language: Language = 'en'): WordEntry {
   const cleanWord = query.trim().toLowerCase();
   const wordTokens = cleanWord.split(/\s+/).filter(Boolean);
   const isPhrase = wordTokens.length > 1;
   
-  const rawSyllables = isPhrase ? wordTokens : splitIntoSyllables(cleanWord);
-  const syllables = rawSyllables.length > 0 ? rawSyllables : [cleanWord];
-  const stressedIndex = Math.min(1, Math.max(0, syllables.length - 2));
+  const rawSyllables = isPhrase ? [] : splitIntoSyllables(cleanWord);
+  const syllables = rawSyllables;
+  const stressedIndex = isPhrase ? -1 : Math.min(1, Math.max(0, syllables.length - 2));
 
-  // Generate authentic TED clips across official TED talks
+  // Generate authentic clips across BBC, TED, Easy English, Rachel's English, TV Series, VOA
   const clips = generateClipsForWord(cleanWord, 64);
+  const ipaTrans = getSentenceIPATranscription(cleanWord);
+  const vietnameseDef = isPhrase
+    ? (getVietnameseSubtitle(cleanWord, 'query') || 'Mẫu câu giao tiếp thông dụng trong tiếng Anh.')
+    : (getVietnameseSubtitle(cleanWord, 'query') || `Từ vựng tiếng Anh trong các video học và giao tiếp thực tế.`);
 
   return {
     word: cleanWord,
     language,
     ipa: {
-      us: `/${cleanWord.replace(/e$/, 'iː').replace(/th/, 'θ')}/`,
-      uk: `/${cleanWord.replace(/r/, 'ə')}/`
+      us: `/${ipaTrans || cleanWord}/`,
+      uk: `/${ipaTrans || cleanWord}/`
     },
-    respelling: syllables.map((s, i) => (i === stressedIndex ? s.toUpperCase() : s)).join(isPhrase ? ' ' : '-'),
+    respelling: isPhrase ? cleanWord : syllables.map((s, i) => (i === stressedIndex ? s.toUpperCase() : s)).join('-'),
     syllables,
     stressedIndex,
-    partOfSpeech: isPhrase ? 'cụm từ / câu' : cleanWord.endsWith('ly') ? 'phó từ' : cleanWord.endsWith('tion') ? 'danh từ' : 'từ vựng TED',
-    definition: `Từ vựng trong các bài nói truyền cảm hứng chính thức tại TED Talks (@TED).`,
-    vietnameseDefinition: `Ngữ cảnh diễn đạt, phát âm và ngữ điệu tự nhiên từ các diễn giả kênh TED (@TED).`,
-    tips: [
-      `Lắng nghe cách diễn giả TED nhấn trọng âm và ngữ điệu câu với từ: "${cleanWord}".`,
+    partOfSpeech: isPhrase ? 'mẫu câu / cụm từ giao tiếp' : cleanWord.endsWith('ly') ? 'phó từ' : cleanWord.endsWith('tion') ? 'danh từ' : 'từ vựng',
+    definition: isPhrase 
+      ? `Mẫu câu / cụm từ giao tiếp tiếng Anh tự nhiên trong đời sống và đối thoại.` 
+      : `Từ vựng trong các video học tiếng Anh và bài nói truyền cảm hứng.`,
+    vietnameseDefinition: vietnameseDef,
+    tips: isPhrase ? [
+      `Lắng nghe và nhại lại toàn bộ ngữ điệu câu: "${cleanWord}".`,
+      'Để ý hiện tượng nối âm (connected speech) và nuốt âm của người bản ngữ khi nói nhanh.',
+      'Luyện tập shadowing (nhại lại) ngay sau khi người nói dứt câu để tạo phản xạ tự nhiên.'
+    ] : [
+      `Lắng nghe cách diễn giả nhấn trọng âm và ngữ điệu câu với từ: "${cleanWord}".`,
       'Để ý cách các diễn giả hàng đầu truyền tải thông điệp một cách lôi cuốn và tự nhiên.',
       'Luyện tập shadowing (nhại lại) ngay sau khi diễn giả dứt câu để nâng cao sự tự tin.'
     ],
     rhymes: [],
-    collocations: [`TED context: "${cleanWord}"`, `listen to "${cleanWord}"`],
+    collocations: isPhrase && wordTokens.length >= 2 ? [
+      wordTokens.slice(0, 2).join(' '),
+      wordTokens.slice(-2).join(' ')
+    ] : [`context: "${cleanWord}"`, `listen to "${cleanWord}"`],
     clips
   };
 }

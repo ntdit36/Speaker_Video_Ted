@@ -113,7 +113,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onFocus={() => history.length > 0 && setShowHistoryDropdown(true)}
-            placeholder="Tìm từ trong các bài nói TED (@TED): leader, success, grit, water, vulnerable..."
+            placeholder="Tìm câu hoặc từ (BBC, Easy English, Friends, Rachel's, TED, VOA): what is your best friend like..."
             className="w-full px-4 py-3.5 text-base sm:text-lg text-slate-900 placeholder:text-slate-400 bg-transparent outline-none font-medium"
           />
 

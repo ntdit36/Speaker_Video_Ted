@@ -20,8 +20,15 @@ import {
   Sliders,
   Plus,
   Minus,
-  Gauge
+  Gauge,
+  Mic,
+  Languages,
+  BookOpen
 } from 'lucide-react';
+import { WordDetailModal } from './WordDetailModal';
+import { getVietnameseSubtitle, translateSentence, translateBatch, onTranslationUpdate } from '../services/translationService';
+import { getSentenceIPATranscription } from '../services/pronunciationService';
+import { saveVocabularyItem } from '../services/storageService';
 
 interface TranscriptBannerProps {
   clip: VideoClip;
@@ -32,6 +39,7 @@ interface TranscriptBannerProps {
   currentTime?: number;
   onSeekTime?: (time: number) => void;
   onReplaySentence?: () => void;
+  onOpenShadowing?: (sentence: string, targetWord: string, videoId: string) => void;
 }
 
 export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
@@ -43,11 +51,16 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
   currentTime,
   onSeekTime,
   onReplaySentence,
+  onOpenShadowing,
 }) => {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedWordIndex, setSelectedWordIndex] = useState<number | null>(null);
+  const [detailModalWord, setDetailModalWord] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
+  const [savedSentenceNotice, setSavedSentenceNotice] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'live' | 'full' | 'dual'>('live');
+  const [subtitleMode, setSubtitleMode] = useState<'dual' | 'en' | 'vi'>('dual');
+  const [showIPA, setShowIPA] = useState<boolean>(false);
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
   const [filterQuery, setFilterQuery] = useState<string>('');
 
@@ -90,13 +103,38 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
   const activeLineRef = useRef<HTMLDivElement>(null);
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
 
+  // Reactive state to trigger re-render when new translations arrive
+  const [translationVersion, setTranslationVersion] = useState<number>(0);
+
+  useEffect(() => {
+    return onTranslationUpdate(() => {
+      setTranslationVersion((v) => v + 1);
+    });
+  }, []);
+
   // Retrieve or proceduralize full video transcript lines (covering 0s to durationSeconds)
   const lines: TranscriptLine[] = useMemo(() => {
-    if (clip.transcriptLines && clip.transcriptLines.length > 0) {
-      return clip.transcriptLines;
+    const raw = (clip.transcriptLines && clip.transcriptLines.length > 0)
+      ? clip.transcriptLines
+      : generateFullTranscriptForClip(clip);
+    return raw.map((line) => ({
+      ...line,
+      vietnameseText: line.vietnameseText || getVietnameseSubtitle(line.text, clip.youtubeId),
+      ipa: line.ipa || getSentenceIPATranscription(line.text),
+    }));
+  }, [clip, translationVersion]);
+
+  // Pre-fetch translations for uncached transcript lines in background
+  useEffect(() => {
+    if (lines.length > 0) {
+      const uncached = lines
+        .filter((l) => !l.vietnameseText)
+        .map((l) => l.text);
+      if (uncached.length > 0) {
+        translateBatch(uncached);
+      }
     }
-    return generateFullTranscriptForClip(clip);
-  }, [clip]);
+  }, [clip.youtubeId, lines.length]);
 
   const currentSec = currentTime !== undefined ? currentTime : clip.startSecond;
   // Apply lead time offset so subtitle switches at the exact moment the speaker speaks
@@ -292,6 +330,61 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
               <span>Toàn bài ({lines.length})</span>
             </button>
           </div>
+
+          {/* Bilingual Subtitle Mode Toggle */}
+          <div className="flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200/60 text-[11px]">
+            <button
+              type="button"
+              onClick={() => setSubtitleMode('dual')}
+              className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                subtitleMode === 'dual'
+                  ? 'bg-amber-400 text-slate-950 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Phụ đề song ngữ Anh - Việt"
+            >
+              Song ngữ
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubtitleMode('en')}
+              className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                subtitleMode === 'en'
+                  ? 'bg-amber-400 text-slate-950 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Chỉ tiếng Anh"
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubtitleMode('vi')}
+              className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                subtitleMode === 'vi'
+                  ? 'bg-amber-400 text-slate-950 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Chỉ tiếng Việt"
+            >
+              VI
+            </button>
+          </div>
+
+          {/* IPA Phonetics Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowIPA(!showIPA)}
+            className={`px-2 py-1 rounded-md text-xs font-semibold border flex items-center gap-1 transition-all cursor-pointer ${
+              showIPA
+                ? 'bg-amber-100 text-amber-950 border-amber-300 ring-2 ring-amber-300/60 font-bold shadow-2xs'
+                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+            }`}
+            title="Bật / tắt phiên âm quốc tế IPA"
+          >
+            <Languages className="w-3 h-3 text-amber-600" />
+            <span>IPA</span>
+          </button>
 
           {/* Subtitle Speed & Sync Tuner Button */}
           <button
@@ -594,6 +687,7 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
                     <button
                       type="button"
                       onClick={() => handleWordClick(word, idx)}
+                      onDoubleClick={() => setDetailModalWord(cleaned)}
                       className={`transition-all rounded px-1.5 py-0.5 inline-block text-left cursor-pointer duration-100 ${
                         isActiveRealtime && isTarget
                           ? 'bg-amber-400 text-amber-950 font-black ring-3 ring-amber-400/80 scale-105 shadow-md shadow-amber-300/40 z-10'
@@ -612,6 +706,84 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
                   </span>
                 );
               })}
+            </div>
+
+            {/* Bilingual Vietnamese Translation Row */}
+            {subtitleMode !== 'en' && (
+              <div className="pt-2 border-t border-amber-200/60 min-h-[28px] flex items-center">
+                {activeLine.vietnameseText ? (
+                  <p className="text-sm sm:text-base font-semibold text-amber-950 leading-relaxed italic">
+                    🇻🇳 {activeLine.vietnameseText}
+                  </p>
+                ) : (
+                  <p className="text-xs text-amber-800/60 font-medium italic animate-pulse flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    <span>Đang dịch phụ đề tiếng Việt...</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Phonetic IPA Transcription Row */}
+            {showIPA && activeLine.ipa && (
+              <div className="pt-1 text-xs font-mono text-slate-500 flex items-center gap-1.5">
+                <span className="font-bold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded text-[10px]">IPA</span>
+                <span>/{activeLine.ipa}/</span>
+              </div>
+            )}
+
+            {/* Per-Sentence Action Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-amber-200/40 text-xs">
+              <div className="flex items-center gap-2">
+                {onOpenShadowing && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenShadowing(activeLine.text, targetWord, clip.youtubeId)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-[11px] hover:bg-slate-800 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    title="Mở câu này trong Shadowing Studio để luyện nói"
+                  >
+                    <Mic className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Luyện nói Shadowing</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await saveVocabularyItem({
+                      id: `sent-${Date.now()}`,
+                      word: targetWord || (words[0] ? cleanWordForLookup(words[0]) : 'TED Quote'),
+                      vietnameseMeaning: activeLine.vietnameseText || 'Câu trích từ TED Talk',
+                      exampleSentence: activeLine.text,
+                      vietnameseSentence: activeLine.vietnameseText,
+                      videoId: clip.youtubeId,
+                      timestamp: activeLine.startSecond,
+                      leitnerBox: 1,
+                      createdAt: Date.now(),
+                      tags: ['TED Sentence', clip.channel],
+                    });
+                    setSavedSentenceNotice('Đã lưu câu vào Sổ từ vựng!');
+                    setTimeout(() => setSavedSentenceNotice(null), 2500);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-[11px] border border-amber-300 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  title="Lưu câu và bản dịch vào Sổ từ vựng cá nhân"
+                >
+                  <Bookmark className="w-3.5 h-3.5 text-amber-700" />
+                  <span>{savedSentenceNotice ? 'Đã lưu!' : 'Lưu câu vào Sổ'}</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-slate-500">
+                <button
+                  type="button"
+                  onClick={() => copySentence(`${activeLine.text}\n→ ${activeLine.vietnameseText || ''}`)}
+                  className="px-2 py-0.5 rounded hover:bg-amber-100 text-[11px] font-semibold text-slate-600 transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Sao chép câu tiếng Anh và bản dịch"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>{copied ? 'Đã chép!' : 'Chép câu & dịch'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Real-time Sentence Scrubber Bar */}
@@ -733,7 +905,19 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
                       {line.text}
                     </p>
 
-                    <div className="flex items-center gap-2 mt-1">
+                    {subtitleMode !== 'en' && line.vietnameseText && (
+                      <p className="text-xs text-amber-900/90 font-medium italic mt-0.5 leading-relaxed">
+                        {line.vietnameseText}
+                      </p>
+                    )}
+
+                    {showIPA && line.ipa && (
+                      <p className="text-[11px] font-mono text-slate-400 mt-0.5">
+                        /{line.ipa}/
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       {isCurrent && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 uppercase font-mono animate-pulse">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
@@ -745,6 +929,21 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
                         <span className="text-[10px] font-bold text-amber-800 bg-amber-200/70 px-1.5 py-0.2 rounded">
                           🎯 Có chứa "{targetWord}"
                         </span>
+                      )}
+
+                      {onOpenShadowing && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenShadowing(line.text, targetWord, clip.youtubeId);
+                          }}
+                          className="text-[10px] text-slate-700 hover:text-slate-950 font-bold bg-white hover:bg-amber-100 border border-slate-200 px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                          title="Luyện nói câu này trong Shadowing Studio"
+                        >
+                          <Mic className="w-3 h-3 text-amber-600" />
+                          <span>Luyện Shadowing</span>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -780,7 +979,17 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => {
+                setDetailModalWord(selectedWord);
+              }}
+              className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs border border-amber-300 cursor-pointer"
+              title="Mở bảng tra cứu từ vựng chi tiết với IPA và lưu sổ"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-700" />
+              <span>Tra từ chi tiết & Lưu</span>
+            </button>
             <button
               onClick={() => {
                 onSearchWord(selectedWord);
@@ -789,7 +998,7 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
               className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-900 font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
               <Search className="w-3.5 h-3.5" />
-              <span>Tìm kiếm "{selectedWord}" trên YouGlish</span>
+              <span>Tìm kiếm "{selectedWord}"</span>
             </button>
             <button
               onClick={() => setSelectedWord(null)}
@@ -799,6 +1008,18 @@ export const TranscriptBanner: React.FC<TranscriptBannerProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Word Detail Modal */}
+      {detailModalWord && (
+        <WordDetailModal
+          word={detailModalWord}
+          onClose={() => setDetailModalWord(null)}
+          onSearchWord={onSearchWord}
+          contextSentence={activeLine.text}
+          contextVietnamese={activeLine.vietnameseText}
+          videoId={clip.youtubeId}
+        />
       )}
     </div>
   );

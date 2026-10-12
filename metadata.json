@@ -1,6 +1,6 @@
 {
-  "name": "YouGlish Pronounce - YouTube Video Pronunciation Dictionary",
-  "description": "Learn authentic pronunciation from real YouTube videos with interactive subtitles, accent filters, phonetic IPA, and shadowing practice.",
+  "name": "Speaker Video TED - Authentic English Learning Platform",
+  "description": "Learn authentic English pronunciation, listening comprehension, vocabulary, and speaking from real TED videos with bilingual subtitles, IPA, shadowing studio, and interactive exercises.",
   "requestFramePermissions": ["microphone"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

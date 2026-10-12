@@ -4,11 +4,17 @@ export type Accent = 'all' | 'us' | 'uk' | 'aus' | 'ca';
 
 export type DurationFilter = 'all' | 'under20' | 'under15' | 'under10' | 'under5';
 
+export type ChannelFilter = 'all' | 'bbc' | 'ted' | 'tedx' | 'rachel' | 'easy' | 'tvseries' | 'voa';
+
+export type SubtitleMode = 'dual' | 'en' | 'vi';
+
 export interface TranscriptLine {
   id: string;
   startSecond: number;
   endSecond: number;
   text: string;
+  vietnameseText?: string;
+  ipa?: string;
   isTargetOccurrence?: boolean;
 }
 
@@ -21,6 +27,7 @@ export interface VideoClip {
   endSecond: number;
   accent: Accent;
   sentence: string;
+  vietnameseSentence?: string;
   targetWord: string;
   category?: string;
   views?: string;

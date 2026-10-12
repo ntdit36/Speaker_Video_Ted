@@ -1,20 +1,24 @@
 import { AUTHENTIC_TRANSCRIPTS, RawSubtitleCue } from '../data/knownTranscripts';
+import { MULTI_CHANNEL_CATALOG, MULTI_CHANNEL_TRANSCRIPTS } from '../data/multiChannelData';
 import { TranscriptLine, Accent } from '../types';
 
 // In-memory cache of authentic video transcripts
 const transcriptCache = new Map<string, RawSubtitleCue[]>();
 
-// Seed cache with pre-indexed verified transcripts strictly from official TED Talks
+// Seed cache with pre-indexed verified transcripts from TED Talks and Educational Channels
 for (const [vid, cues] of Object.entries(AUTHENTIC_TRANSCRIPTS)) {
   transcriptCache.set(vid, cues);
 }
+for (const [vid, cues] of Object.entries(MULTI_CHANNEL_TRANSCRIPTS)) {
+  transcriptCache.set(vid, cues);
+}
 
-// Known video metadata catalog - strictly official TED channel (https://www.youtube.com/@TED)
+// Known video metadata catalog - covering TED, BBC Learning English, Easy English, Rachel's English, TV Series, VOA
 export interface VideoCatalogItem {
   youtubeId: string;
   title: string;
   speaker: string;
-  channel: 'TED';
+  channel: string;
   accent: Accent;
   category: string;
   views: string;
@@ -234,6 +238,11 @@ export const KNOWN_VIDEO_CATALOG: Record<string, VideoCatalogItem> = {
   },
 };
 
+// Seed MULTI_CHANNEL_CATALOG into KNOWN_VIDEO_CATALOG
+for (const item of MULTI_CHANNEL_CATALOG) {
+  KNOWN_VIDEO_CATALOG[item.youtubeId] = item;
+}
+
 /**
  * Fetch or get authentic transcript cues for a given video ID
  */
@@ -279,6 +288,9 @@ export function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+import { getVietnameseSubtitle } from './translationService';
+import { getSentenceIPATranscription } from './pronunciationService';
+
 /**
  * Converts RawSubtitleCue array into TranscriptLine[] with target identification
  */
@@ -303,6 +315,8 @@ export function cuesToTranscriptLines(
     startSecond: cue.start,
     endSecond: cue.end,
     text: cue.text,
+    vietnameseText: getVietnameseSubtitle(cue.text, videoId),
+    ipa: getSentenceIPATranscription(cue.text),
     isTargetOccurrence: idx === closestIdx,
   }));
 }
